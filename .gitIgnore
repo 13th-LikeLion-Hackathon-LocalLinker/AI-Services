@@ -1,0 +1,35 @@
+# venv / 캐시
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# 로그/데이터/캐시
+*.log
+logs/
+data/
+qdrant_data/
+models/
+cache/
+
+# 환경변수/시크릿
+.env
+.env.*
+!env.example
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+
+# OS 잡파일
+.DS_Store
+Thumbs.db
