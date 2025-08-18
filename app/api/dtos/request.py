@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Literal
 from pydantic import BaseModel, Field
 
 class BenefitsSearchReq(BaseModel):
@@ -11,3 +11,8 @@ class BenefitsSearchReq(BaseModel):
     k: int = Field(30, ge=1, le=100)
     page: int = Field(0, ge=0)
     size: int = Field(10, ge=1, le=50)
+
+class ChatbotReq(BaseModel):
+    """챗봇 요청 DTO"""
+    query: str = Field(..., description="사용자 질의")
+    lang: Literal["ko", "zh", "th", "en", "vi", "ja", "uz"] = Field("ko", description="질의 언어")

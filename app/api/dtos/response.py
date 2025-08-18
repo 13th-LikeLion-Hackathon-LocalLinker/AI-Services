@@ -21,3 +21,7 @@ class BenefitsSearchRes(BaseModel):
     page: int
     size: int
     items: List[BenefitHit]
+
+class ChatbotRes(BaseModel):
+    """챗봇 응답 DTO"""
+    answer: str
