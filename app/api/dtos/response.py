@@ -1,5 +1,6 @@
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
 
 class BenefitHit(BaseModel):
     """개별 혜택 프로그램 정보 DTO"""
@@ -24,4 +25,4 @@ class BenefitsSearchRes(BaseModel):
 
 class ChatbotRes(BaseModel):
     """챗봇 응답 DTO"""
-    answer: str
+    answer: str = Field(..., description="챗봇의 답변")

@@ -10,6 +10,7 @@ from pathlib import Path
 from loguru import logger
 from etl.etl_pipeline import ETLPipeline
 
+
 def setup_logging():
     """로깅 설정"""
     logger.remove()
@@ -25,6 +26,7 @@ def setup_logging():
         format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}",
         level="DEBUG"
     )
+
 
 def main():
     """메인 함수"""
@@ -46,35 +48,35 @@ def main():
   python -m etl.main --pdf-file guidebook_ko.pdf
         """
     )
-    
+
     parser.add_argument(
         '--force-recreate',
         action='store_true',
         help='기존 Qdrant 컬렉션을 삭제하고 새로 생성'
     )
-    
+
     parser.add_argument(
         '--chunking-strategy',
         choices=['auto', 'toc', 'semantic', 'fixed'],
         default='auto',
         help='텍스트 청킹 전략 (기본값: auto)'
     )
-    
+
     parser.add_argument(
         '--pdf-file',
         type=str,
         help='처리할 특정 PDF 파일명 (전체 처리 시 생략)'
     )
-    
+
     parser.add_argument(
         '--log-level',
         choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'],
         default='INFO',
         help='로그 레벨 (기본값: INFO)'
     )
-    
+
     args = parser.parse_args()
-    
+
     # 로그 레벨 설정
     logger.remove()
     logger.add(
@@ -82,11 +84,11 @@ def main():
         format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
         level=args.log_level
     )
-    
+
     # 로그 디렉토리 생성
     log_dir = Path("logs")
     log_dir.mkdir(exist_ok=True)
-    
+
     logger.add(
         log_dir / "etl_pipeline.log",
         rotation="1 day",
@@ -94,51 +96,24 @@ def main():
         format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}",
         level="DEBUG"
     )
-    
+
     try:
         logger.info("ETL 파이프라인 시작")
-        
+
         # ETL 파이프라인 초기화
         pipeline = ETLPipeline()
-        
-        if args.pdf_file:
-            # 특정 PDF 파일만 처리
-            pdf_path = Path("guidebook_pdfs") / args.pdf_file
-            if not pdf_path.exists():
-                logger.error(f"PDF 파일을 찾을 수 없습니다: {pdf_path}")
-                return 1
-            
-            logger.info(f"단일 PDF 파일 처리: {args.pdf_file}")
-            success = pipeline.process_single_pdf(pdf_path, args.chunking_strategy)
-            
-            if success:
-                logger.info("PDF 파일 처리 완료")
-                return 0
-            else:
-                logger.error("PDF 파일 처리 실패")
-                return 1
+
+        # 전체 파이프라인 실행
+        logger.info("전체 ETL 파이프라인 실행")
+        success = pipeline.run()
+
+        if success:
+            logger.info("ETL 파이프라인 실행 완료")
+            return 0
         else:
-            # 전체 파이프라인 실행
-            logger.info("전체 ETL 파이프라인 실행")
-            success = pipeline.run_full_pipeline(args.force_recreate)
-            
-            if success:
-                logger.info("ETL 파이프라인 실행 완료")
-                
-                # 컬렉션 정보 출력
-                collection_info = pipeline.get_collection_info()
-                if collection_info:
-                    logger.info("=== 컬렉션 정보 ===")
-                    logger.info(f"이름: {collection_info.get('name', 'guidebook_chunks')}")
-                    logger.info(f"벡터 수: {collection_info.get('vectors_count', 'N/A')}")
-                    logger.info(f"포인트 수: {collection_info.get('points_count', 'N/A')}")
-                    logger.info(f"상태: {collection_info.get('status', 'N/A')}")
-                
-                return 0
-            else:
-                logger.error("ETL 파이프라인 실행 실패")
-                return 1
-                
+            logger.error("ETL 파이프라인 실행 실패")
+            return 1
+
     except KeyboardInterrupt:
         logger.warning("사용자에 의해 중단됨")
         return 130
@@ -148,4 +123,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-
