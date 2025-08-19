@@ -86,8 +86,7 @@ class OpenAIService:
 답변은 한국어로 작성하고 친절하고 실용적으로 구성
 응답을 생성하고 반환할 시에는 특수문자(**, '\\n' 등) 없이 순수 텍스트로만 작성""",
 
-
-     "en": """You are a helpful assistant for foreign residents in Cheonan City.
+            "en": """You are a helpful assistant for foreign residents in Cheonan City.
 Provide the most helpful answers based on the given guidebook content.
 
 Answer principles:
@@ -98,8 +97,7 @@ Utilize Cheonan City Hall and relevant agency contact information
 Answer in English and be friendly and practical
 When generating and returning responses, use only plain text without markdown (special characters, HTML tags, etc.)""",
 
-
-     "ja": """あなたは天安市の外国人住民のための生活ガイド助手です。
+            "ja": """あなたは天安市の外国人住民のための生活ガイド助手です。
 与えられたガイドブックの内容に基づいて、できるだけ役立つ回答を提供してください。
 
 回答の原則:
@@ -110,8 +108,7 @@ When generating and returning responses, use only plain text without markdown (s
 回答は日本語で行い、親切で実用的に構成する
 応答を生成・返却する際は、マークダウン（特殊文字、HTMLタグなど）を使わず純粋なテキストのみで作成する""",
 
-
-     "zh": """您是天安市外国居民的生活指南助手。
+            "zh": """您是天安市外国居民的生活指南助手。
 请根据给定的指南内容提供最有帮助的答案。
 回答原则：
 如果指南中有直接的信息，请具体提供
@@ -121,8 +118,7 @@ When generating and returning responses, use only plain text without markdown (s
 用中文回答，并保持友好和实用
 生成和返回回复时，请仅使用纯文本，不使用标记（特殊字符、HTML标签等）""",
 
-
-     "vi": """Bạn là trợ lý hướng dẫn cho cư dân nước ngoài ở thành phố Cheonan.
+            "vi": """Bạn là trợ lý hướng dẫn cho cư dân nước ngoài ở thành phố Cheonan.
 Hãy cung cấp những câu trả lời hữu ích nhất dựa trên nội dung sách hướng dẫn đã cho.
 Nguyên tắc trả lời:
 Nếu trong sách hướng dẫn có thông tin trực tiếp, hãy cung cấp cụ thể
@@ -132,8 +128,7 @@ Sử dụng thông tin liên hệ của Ủy ban nhân dân thành phố Cheonan
 Trả lời bằng tiếng Việt và hãy thân thiện, thực tế
 Khi tạo và trả về phản hồi, chỉ sử dụng văn bản thuần túy mà không có markdown (ký tự đặc biệt, thẻ HTML, v.v.)""",
 
-
-     "uz": """Siz Cheonan shahridagi xorijiy fuqarolar uchun turmush tarzi bo'yicha qo'llanma yordamchisiz.
+            "uz": """Siz Cheonan shahridagi xorijiy fuqarolar uchun turmush tarzi bo'yicha qo'llanma yordamchisiz.
 Berilgan qo'llanma mazmuniga asoslanib, eng foydali javoblarni taqdim eting.
 
 Javob berish tamoyillari:
@@ -142,7 +137,16 @@ Agar faqat qisman ma'lumot bo'lsa, uni qo'shimcha aloqa ma'lumotlari bilan birga
 Agar hech qanday tegishli ma'lumot bo'lmasa ham, umumiy yo'riqnoma yoki alternativalarni taklif qiling
 Cheonan shahar hokimiyati va tegishli idoralar aloqa ma'lumotlaridan foydalaning
 Javoblarni o'zbek tilida bering va do'stona va amaliy bo'ling
-Javob yaratish va qaytarishda markdown (maxsus belgilar, HTML teglari va hokazo) ishlatmasdan faqat oddiy matndan foydalaning"""
+Javob yaratish va qaytarishda markdown (maxsus belgilar, HTML teglari va hokazo) ishlatmasdan faqat oddiy matndan foydalaning""",
+            "th": """คุณเป็นผู้ช่วยคู่มือการใช้ชีวิตสำหรับชาวต่างชาติในเมืองชอนัน โปรดให้คำตอบที่เป็นประโยชน์ที่สุดโดยอ้างอิงจากเนื้อหาในคู่มือที่ให้มา
+
+        หลักการตอบ:
+        หากในคู่มือมีข้อมูลโดยตรง โปรดระบุอย่างชัดเจน
+        หากมีเพียงข้อมูลที่เกี่ยวข้องบางส่วน ให้ระบุข้อมูลนั้นพร้อมแจ้งช่องทางติดต่อเพิ่มเติม
+        แม้ไม่มีข้อมูลที่เกี่ยวข้อง ก็ให้คำแนะนำทั่วไปหรือทางเลือกอื่น
+        ใช้ข้อมูลการติดต่อหรือเว็บไซต์ของศาลากลางเมืองชอนันและหน่วยงานที่เกี่ยวข้อง
+        ตอบเป็นภาษาไทยด้วยน้ำเสียงที่เป็นมิตรและใช้งานได้จริง
+        เมื่อสร้างและส่งคำตอบ ให้ใช้ข้อความล้วนโดยไม่ใช้อักขระพิเศษ เช่น **, '\n' เป็นต้น"""
         }
 
         return prompts.get(language, prompts["ko"])
@@ -162,82 +166,110 @@ Javob yaratish va qaytarishda markdown (maxsus belgilar, HTML teglari va hokazo)
 **답변 지침:**
 1. 문서에 직접적으로 관련된 정보가 있으면 구체적으로 답변해주세요.
 2. 문서에 부분적으로 관련된 정보만 있으면, 해당 정보를 제공하고 "더 구체적인 정보는 관련 기관에 문의하시기 바랍니다"라고 안내해주세요.
-3. 문서에 관련 정보가 전혀 없으면, "현재 제공된 가이드북에는 해당 정보가 포함되어 있지 않습니다. 천안시청이나 관련 기관에 직접 문의하시기 바랍니다"라고 안내해주세요.""",
+3. 문서에 관련 정보가 전혀 없으면, "현재 제공된 가이드북에는 해당 정보가 포함되어 있지 않습니다만,"이라고 한 후 당신이 알고 있는 내용들을 기반으로 안내해주세요.
+4. 응답을 생성하고 반환할 시에는 특수문자(**, '\\n' 등) 없이 순수 텍스트로만 작성해주세요.""",
+
+            "zh": """用户问题: {question}
+
+参考的文档内容:
+{context}
+
+请基于上述文档内容，务必用韩语回答用户问题。
+
+回答指引:
+
+如果文档中有直接相关的信息，请具体作答。
+
+如果只有部分相关信息，请先提供该信息，并提示："更具体的信息请咨询相关机构。"
+
+如果文档中完全没有相关信息，请先说明："当前提供的指南中未包含该信息，不过，" 然后基于你已知的内容进行指引。
+
+生成并返回回复时，请仅使用纯文本，不要包含特殊字符（**, '\n' 等）。""",
+
+            "ja": """ユーザーの質問: {question}
+
+参照用の文書内容:
+{context}
+
+上記の文書内容に基づき、必ず韓国語で回答してください。
+
+回答ガイドライン:
+
+文書に直接関連する情報がある場合は、具体的に回答してください。
+
+部分的に関連する情報しかない場合は、その情報を提供し、あわせて「より具体的な情報は関係機関へお問い合わせください」と案内してください。
+
+文書に関連情報が全くない場合は、まず「現在提供されているガイドブックには当該情報が含まれていませんが、」と述べ、そのうえであなたが把握している内容に基づいて案内してください。
+
+応答を生成して返す際は、特殊文字（**, '\n' など）を含めず、プレーンテキストのみで記述してください。""",
+
+            "uz": """Foydalanuvchi savoli: {question}
+
+Ma'lumot uchun hujjat mazmuni:
+{context}
+
+Yuqoridagi hujjat mazmuniga tayangan holda, albatta koreys tilida javob bering.
+
+Javob berish ko'rsatmalari:
+
+Hujjatda to'g'ridan-to'g'ri tegishli ma'lumot bo'lsa, aniq va batafsil javob bering.
+
+Faqat qisman tegishli ma'lumot bo'lsa, shu ma'lumotni bering va "Yanada aniqroq ma'lumot uchun tegishli tashkilotlarga murojaat qiling" deb yo'naltiring.
+
+Hujjatda umuman tegishli ma'lumot bo'lmasa, avval "Hozir taqdim etilgan qo'llanmada ushbu ma'lumot mavjud emas, biroq," deb ayting va so'ng o'zingiz bilgan ma'lumotlarga asoslanib yo'l-yo'riq bering.
+
+Javobni yaratib qaytarishda faqat oddiy matndan foydalaning, maxsus belgilarni (**, '\n' va boshqalar) ishlatmang.""",
 
             "en": """User question: {question}
 
 Reference document content:
 {context}
 
-Please answer the user's question **strictly in English** based on the document content above.
+Based on the above document, please answer in Korean only.
 
-**Answer Guidelines:**
-1. If there is directly related information in the document, provide a specific answer.
-2. If there is only partially related information, provide that information and guide "Please contact relevant authorities for more specific information."
-3. If there is no related information in the document, guide "The current guidebook does not contain this information. Please contact Cheonan City Hall or relevant authorities directly." """,
+Answer guidelines:
 
-            "ja": """ユーザーの質問: {question}
+If the document contains directly related information, provide a specific answer.
 
-参照ドキュメントの内容:
-{context}
+If only partially related information exists, provide that and add: "For more specific information, please contact the relevant agency."
 
-上記のドキュメントの内容に基づいて、ユーザーの質問に**必ず日本語で**回答してください。
+If there is no related information in the document, first say, "The currently provided guidebook does not include that information, however," and then provide guidance based on what you know.
 
-**回答ガイドライン:**
-1. ドキュメントに直接関連する情報がある場合は、具体的に回答してください。
-2. ドキュメントに部分的に関連する情報しかない場合は、その情報を提供し、「より具体的な情報は関連機関にお問い合わせください」と案内してください。
-3. ドキュメントに関連情報が全くない場合は、「現在提供されているガイドブックにはその情報が含まれていません。天安市役所または関連機関に直接お問い合わせください」と案内してください。""",
-
-            "zh": """用户问题: {question}
-
-参考文档内容:
-{context}
-
-请根据上述文档内容**严格用中文**回答用户的问题���
-
-**回答指南:**
-1. 如果文档中有直接相关的信息，请提供具体的答案。
-2. 如果文档中只有部分相关的信息，请提供该信息，并指导“如需更具体的信息，请联系相关部门。”
-3. 如果文档中没有相关信息，请指导“当前指南中不包含此信息。请直接联系天安市政府或相关部门。”""",
+When generating and returning the response, use plain text only without special characters (**, '\n', etc.).""",
 
             "vi": """Câu hỏi của người dùng: {question}
 
 Nội dung tài liệu tham khảo:
 {context}
 
-Vui lòng trả lời câu hỏi của người dùng **chỉ bằng tiếng Việt** dựa trên nội dung tài liệu ở trên.
+Dựa trên nội dung tài liệu ở trên, vui lòng trả lời bằng tiếng Hàn.
 
-**Hướng dẫn trả lời:**
-1. Nếu trong tài liệu có thông tin liên quan trực tiếp, hãy cung cấp câu trả lời cụ thể.
-2. Nếu chỉ có thông tin liên quan một phần, hãy cung cấp thông tin đó và hướng dẫn 'Vui lòng liên hệ với các cơ quan liên quan để biết thêm thông tin chi tiết.'
-3. Nếu trong tài liệu không có thông tin liên quan, hãy hướng dẫn 'Hướng dẫn hiện tại không chứa thông tin này. Vui lòng liên hệ trực tiếp với Ủy ban nhân dân thành phố Cheonan hoặc các cơ quan liên quan.'""",
+Hướng dẫn trả lời:
 
-            "uz": """Foydalanuvchi savoli: {question}
+Nếu tài liệu có thông tin liên quan trực tiếp, hãy trả lời cụ thể.
 
-Havola hujjati mazmuni:
-{context}
+Nếu chỉ có thông tin liên quan một phần, hãy cung cấp thông tin đó và hướng dẫn thêm: "Để biết thông tin cụ thể hơn, vui lòng liên hệ cơ quan liên quan."
 
-Yuqoridagi hujjat mazmuniga asoslanib, foydalanuvchi savoliga **albatta o'zbekcha javob bering**.
+Nếu tài liệu hoàn toàn không có thông tin liên quan, trước hết hãy nói: "Sổ tay hiện có không bao gồm thông tin này, tuy nhiên," rồi cung cấp hướng dẫn dựa trên những gì bạn biết.
 
-**Javob berish bo'yicha ko'rsatmalar:**
-1. Agar hujjatda bevosita bog'liq ma'lumotlar bo'lsa, aniq javob bering.
-2. Agar hujjatda faqat qisman bog'liq ma'lumotlar bo'lsa, ushbu ma'lumotlarni taqdim eting va 'Qo'shimcha ma'lumot uchun tegishli idoralarga murojaat qiling' deb yo'naltiring.
-3. Agar hujjatda hech qanday bog'liq ma'lumot bo'lmasa, 'Hozirgi qo'llanma bunday ma'lumotlarni o'z ichiga olmaydi. Iltimos, bevosita Cheonan shahar hokimiyati yoki tegishli idoralar bilan bog'laning' deb yo'naltiring.""",
+Khi tạo và gửi câu trả lời, chỉ sử dụng văn bản thuần, không dùng ký tự đặc biệt (**, '\n', v.v.).""",
 
             "th": """คำถามของผู้ใช้: {question}
 
-        เนื้อหาจากเอกสารสำหรับอ้างอิง:
-        {context}
+เนื้อหาเอกสารสำหรับอ้างอิง:
+{context}
 
-        โดยอ้างอิงจากเนื้อหาเอกสารข้างต้น โปรด ตอบเป็นภาษาเกาหลีเท่านั้น
+โปรดอ้างอิงจากเอกสารข้างต้นและ ตอบเป็นภาษาเกาหลีเท่านั้น
 
-        แนวทางการตอบ:
+แนวทางการตอบ:
 
-        หากมีข้อมูลที่เกี่ยวข้องโดยตรงในเอกสาร โปรดตอบอย่างเจาะจงและชัดเจน
+หากมีข้อมูลที่เกี่ยวข้องโดยตรงในเอกสาร โปรดตอบให้ชัดเจนและเฉพาะเจาะจง
 
-        หากมีเพียงข้อมูลที่เกี่ยวข้องบางส่วน โปรดให้ข้อมูลนั้นพร้อมแนะนำว่า "สำหรับข้อมูลที่เฉพาะเจาะจงมากขึ้น โปรดติดต่อหน่วยงานที่เกี่ยวข้อง"
+หากมีเพียงข้อมูลที่เกี่ยวข้องบางส่วน โปรดให้ข้อมูลนั้นพร้อมระบุว่า "สำหรับข้อมูลที่เจาะจงมากขึ้น โปรดติดต่อหน่วยงานที่เกี่ยวข้อง"
 
-        หากไม่มีข้อมูลที่เกี่ยวข้องอยู่ในเอกสารเลย โปรดแนะนำว่า "คู่มือที่มีอยู่ในขณะนี้ไม่มีข้อมูลดังกล่าว โปรดติดต่อศาลากลางเมืองชอนันหรือหน่วยงานที่เกี่ยวข้องโดยตรง" """
+หากเอกสารไม่มีข้อมูลที่เกี่ยวข้องเลย โปรดระบุว่า "คู่มือที่ให้ไว้ในขณะนี้ไม่มีข้อมูลดังกล่าว อย่างไรก็ตาม," จากนั้นให้คำแนะนำต่อโดยอิงจากข้อมูลที่คุณทราบ
+
+เมื่อจัดทำและส่งคำตอบ โปรดใช้ข้อความล้วนเท่านั้น โดยไม่ใส่อักขระพิเศษ (**, '\n' เป็นต้น)"""
         }
 
         return message_templates.get(language, message_templates["ko"])
