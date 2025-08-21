@@ -3,8 +3,8 @@ ETL 파이프라인 메인 클래스
 PDF 처리부터 벡터 DB 저장까지 전체 과정을 조율
 """
 
-from etl.embedding_service import EmbeddingService
-from etl.pdf_chunking import PDFProcessor
+from etl.pdf.embedding_service import EmbeddingService
+from etl.pdf.pdf_chunking import PDFProcessor
 import time
 from loguru import logger
 

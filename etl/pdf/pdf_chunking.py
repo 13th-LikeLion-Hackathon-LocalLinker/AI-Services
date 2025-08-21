@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from etl.config import ETLConfig
+from etl.pdf.config import ETLConfig
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 

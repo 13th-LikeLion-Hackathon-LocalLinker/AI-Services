@@ -8,7 +8,7 @@ import argparse
 import sys
 from pathlib import Path
 from loguru import logger
-from etl.etl_pipeline import ETLPipeline
+from etl.pdf.etl_pipeline import ETLPipeline
 
 
 def setup_logging():

@@ -3,12 +3,11 @@ OpenAI API 서비스
 """
 from langchain.chains.retrieval_qa.base import RetrievalQA
 from langchain_community.chat_models import ChatOpenAI
-from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate
 from loguru import logger
 
 from app.config.OpenAIConfig import openai_config
-from etl.embedding_service import EmbeddingService
+from etl.pdf.embedding_service import EmbeddingService
 
 
 class OpenAIService:

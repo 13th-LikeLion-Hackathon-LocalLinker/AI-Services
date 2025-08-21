@@ -2,11 +2,10 @@
 임베딩 서비스
 langchain의 OpenAI 임베딩을 사용하여 텍스트를 벡터로 변환하고 FAISS에 저장
 """
-from typing import List, Dict, Any
 from langchain_community.vectorstores import FAISS
 from loguru import logger
 
-from etl.config import ETLConfig
+from etl.pdf.config import ETLConfig
 
 
 class EmbeddingService:
