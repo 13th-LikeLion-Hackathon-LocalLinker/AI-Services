@@ -57,7 +57,7 @@ class WelfareAPIClient:
         except Exception as e:
             print(f"커스텀 HTTPS 어댑터 설정 실패, 기본 설정 사용: {e}")
         
-    def get(self, endpoint: str, params: Optional[Dict[str, Any]] = None, timeout: int = 15) -> str:
+    def get(self, endpoint: str, params: Optional[Dict[str, Any]] = None, timeout: int = 30) -> str:
         url = f"{self.base_url}/{endpoint}" if not endpoint.startswith('http') else endpoint
         
         # 기본 파라미터에 서비스 키 추가
@@ -133,7 +133,7 @@ class WelfareAPIClient:
                     except Exception as e:
                         print(f"커스텀 HTTPS 어댑터 설정 실패, 기본 설정 사용: {e}")
 
-                def get(self, endpoint: str, params: Optional[Dict[str, Any]] = None, timeout: int = 15) -> str:
+                def get(self, endpoint: str, params: Optional[Dict[str, Any]] = None, timeout: int = 30) -> str:
                     url = f"{self.base_url}/{endpoint}" if not endpoint.startswith('http') else endpoint
 
                     # 기본 파라미터에 서비스 키 추가
@@ -206,7 +206,7 @@ class WelfareAPIClient:
                 """간단한 HTTP 클라이언트"""
 
                 @staticmethod
-                def get(url: str, params: Optional[Dict[str, Any]] = None, timeout: int = 15) -> str:
+                def get(url: str, params: Optional[Dict[str, Any]] = None, timeout: int = 30) -> str:
                     """
                     간단한 GET 요청
 
@@ -286,7 +286,7 @@ class SimpleHTTPClient:
     """간단한 HTTP 클라이언트"""
     
     @staticmethod
-    def get(url: str, params: Optional[Dict[str, Any]] = None, timeout: int = 15) -> str:
+    def get(url: str, params: Optional[Dict[str, Any]] = None, timeout: int = 30) -> str:
         """
         간단한 GET 요청
         
