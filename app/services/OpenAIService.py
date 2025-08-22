@@ -72,27 +72,11 @@ class OpenAIService:
             logger.error(f"OpenAI API 호출 중 오류: {str(e)}")
             raise
 
-    def translate_text(
-            self, 
-            text: str, 
-            target_language: str, 
-            source_language: str = None
-    ) -> dict:
-        """
-        텍스트 번역 기능
-        
-        Args:
-            text: 번역할 텍스트
-            target_language: 번역 대상 언어
-            source_language: 원본 언어 (None이면 자동 감지)
-            
-        Returns:
-            번역 결과 딕셔너리 (번역된 텍스트, 감지된 원본 언어, 대상 언어)
-        """
+    def translate_korean_to_target(self, text: str, target_language: str) -> dict:
+
         try:
             # 언어 코드를 언어명으로 변환
             language_names = {
-                "ko": "한국어",
                 "en": "English", 
                 "ja": "日本語",
                 "zh": "中文",
@@ -103,10 +87,8 @@ class OpenAIService:
             
             target_lang_name = language_names.get(target_language, target_language)
             
-            # 시스템 프롬프트 설정
-            if source_language:
-                source_lang_name = language_names.get(source_language, source_language)
-                system_prompt = f"""당신은 전문 번역가입니다. 주어진 텍스트를 {source_lang_name}에서 {target_lang_name}로 정확하고 자연스럽게 번역해주세요.
+            # 간단한 시스템 프롬프트 (한국어 고정)
+            system_prompt = f"""당신은 전문 번역가입니다. 주어진 한국어 텍스트를 {target_lang_name}로 정확하고 자연스럽게 번역해주세요.
 
 번역 원칙:
 1. 원문의 의미와 뉘앙스를 정확히 전달
@@ -115,41 +97,22 @@ class OpenAIService:
 4. 전문 용어나 고유명사는 적절히 처리
 5. 번역된 텍스트만 반환 (추가 설명 없이)
 
-원본 언어: {source_lang_name}
-대상 언어: {target_lang_name}"""
-            else:
-                system_prompt = f"""당신은 전문 번역가입니다. 주어진 텍스트의 언어를 자동으로 감지하고 {target_lang_name}로 정확하고 자연스럽게 번역해주세요.
-
-번역 원칙:
-1. 원문의 의미와 뉘앙스를 정확히 전달  
-2. 대상 언어의 자연스러운 표현 사용
-3. 문맥에 맞는 적절한 번역
-4. 전문 용어나 고유명사는 적절히 처리
-5. 번역된 텍스트만 반환 (추가 설명 없이)
-
-대상 언어: {target_lang_name}"""
+한국어 → {target_lang_name}"""
 
             # 프롬프트 템플릿 생성
             prompt = ChatPromptTemplate.from_messages([
                 ("system", system_prompt),
-                ("human", "다음 텍스트를 번역해주세요:\n\n{text}")
+                ("human", "다음 한국어 텍스트를 {target_language}로 번역해주세요:\n\n{text}")
             ])
 
             # 체인 생성 및 실행
             chain = prompt | self.client
-            response = chain.invoke({"text": text})
-            
-            # 원본 언어 감지 (별도 호출)
-            if not source_language:
-                detected_language = self._detect_language(text)
-            else:
-                detected_language = source_language
+            response = chain.invoke({"text": text, "target_language": target_lang_name})
 
-            logger.info(f"번역 완료: {detected_language} -> {target_language}")
+            logger.info(f"번역 완료: 한국어 -> {target_language}")
             
             return {
                 "translated_text": response.content.strip(),
-                "source_language": detected_language,
                 "target_language": target_language
             }
             
@@ -157,49 +120,7 @@ class OpenAIService:
             logger.error(f"번역 중 오류 발생: {str(e)}")
             raise
 
-    def _detect_language(self, text: str) -> str:
-        """
-        텍스트의 언어를 감지
-        
-        Args:
-            text: 언어를 감지할 텍스트
-            
-        Returns:
-            감지된 언어 코드
-        """
-        try:
-            # 언어 감지를 위한 프롬프트
-            prompt = ChatPromptTemplate.from_messages([
-                ("system", """당신은 언어 감지 전문가입니다. 주어진 텍스트의 언어를 감지하고 다음 언어 코드 중 하나로만 응답하세요:
 
-ko - 한국어
-en - English  
-ja - 日本語
-zh - 중문 (중국어)
-vi - Tiếng Việt (베트남어)
-uz - O'zbek tili (우즈베크어)  
-th - ภาษาไทย (태국어)
-
-반드시 위의 언어 코드(ko, en, ja, zh, vi, uz, th) 중 하나만 응답하세요. 다른 텍스트는 포함하지 마세요."""),
-                ("human", "다음 텍스트의 언어를 감지해주세요:\n\n{text}")
-            ])
-            
-            chain = prompt | self.client
-            response = chain.invoke({"text": text})
-            
-            detected = response.content.strip().lower()
-            
-            # 유효한 언어 코드인지 확인
-            valid_languages = ["ko", "en", "ja", "zh", "vi", "uz", "th"]
-            if detected in valid_languages:
-                return detected
-            else:
-                logger.warning(f"감지된 언어 '{detected}'가 유효하지 않음. 기본값 'ko' 사용")
-                return "ko"  # 기본값
-                
-        except Exception as e:
-            logger.error(f"언어 감지 중 오류: {str(e)}")
-            return "ko"  # 기본값
 
     def _get_system_prompt(self, language: str) -> str:
         """언어별 시스템 프롬프트 반환"""
