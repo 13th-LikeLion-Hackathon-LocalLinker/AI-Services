@@ -1,0 +1,168 @@
+name: Build and Deploy via Docker Hub
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: locallinker-ai
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Run linting
+      run: |
+        pip install flake8
+        flake8 app/ --count --select=E9,F63,F7,F82 --show-source --statistics
+    
+    - name: Run tests
+      run: |
+        python -m pytest tests/ -v
+
+  build-and-push:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+    
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=raw,value=latest,enable={{is_default_branch}}
+    
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [test, build-and-push]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Deploy to EC2 via Docker Hub
+      env:
+        PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+        HOSTNAME: ${{ secrets.EC2_HOST }}
+        USER_NAME: ${{ secrets.EC2_USER }}
+        DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+        IMAGE_TAG: ${{ github.ref_name }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        OPENAI_CHAT_MODEL: ${{ secrets.OPENAI_CHAT_MODEL }}
+        OPENAI_EMBEDDING_MODEL: ${{ secrets.OPENAI_EMBEDDING_MODEL }}
+        TOP_K_RESULTS: ${{ secrets.TOP_K_RESULTS }}
+        MAX_TOKENS: ${{ secrets.MAX_TOKENS }}
+        TEMPERATURE: ${{ secrets.TEMPERATURE }}
+        OPENAI_TIMEOUT: ${{ secrets.OPENAI_TIMEOUT }}
+      run: |
+        echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
+        
+        ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} "
+          # 프로젝트 디렉토리 생성
+          mkdir -p locallinker-ai && cd locallinker-ai
+          
+          # docker-compose.yml 생성 (Docker Hub 이미지 사용)
+          cat > docker-compose.yml << 'EOF'
+        services:
+          locallinker-ai:
+            image: ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest
+            ports:
+              - '8100:8000'
+            environment:
+              - OPENAI_API_KEY=${OPENAI_API_KEY}
+              - OPENAI_CHAT_MODEL=${OPENAI_CHAT_MODEL:-gpt-4}
+              - OPENAI_EMBEDDING_MODEL=${OPENAI_EMBEDDING_MODEL:-text-embedding-ada-002}
+              - TOP_K_RESULTS=${TOP_K_RESULTS:-5}
+              - MAX_TOKENS=${MAX_TOKENS:-1000}
+              - TEMPERATURE=${TEMPERATURE:-0.7}
+              - OPENAI_TIMEOUT=${OPENAI_TIMEOUT:-30}
+            volumes:
+              - ./faiss_index:/app/faiss_index
+              - ./guidebook_pdfs:/app/guidebook_pdfs
+              - ./logs:/app/logs
+            restart: unless-stopped
+            healthcheck:
+              test: ['CMD', 'curl', '-f', 'http://localhost:8000/api/health']
+              interval: 30s
+              timeout: 10s
+              retries: 3
+              start_period: 40s
+        EOF
+          
+          # 환경변수 파일 생성
+          cat > .env << EOF
+        OPENAI_API_KEY=${OPENAI_API_KEY}
+        OPENAI_CHAT_MODEL=${OPENAI_CHAT_MODEL:-gpt-4}
+        OPENAI_EMBEDDING_MODEL=${OPENAI_EMBEDDING_MODEL:-text-embedding-ada-002}
+        TOP_K_RESULTS=${TOP_K_RESULTS:-5}
+        MAX_TOKENS=${MAX_TOKENS:-1000}
+        TEMPERATURE=${TEMPERATURE:-0.7}
+        OPENAI_TIMEOUT=${OPENAI_TIMEOUT:-30}
+        EOF
+          
+          # 최신 이미지 가져오기 및 배포
+          docker-compose pull
+          docker-compose down --remove-orphans || true
+          docker-compose up -d
+          
+          # 헬스체크
+          echo '서비스 상태 확인 중...'
+          for i in {1..30}; do
+            if curl -f http://localhost:8100/api/health > /dev/null 2>&1; then
+              echo '✅ 배포 성공!'
+              break
+            fi
+            if [ \$i -eq 30 ]; then
+              echo '❌ 배포 실패'
+              docker-compose logs
+              exit 1
+            fi
+            echo \"대기 중... (\$i/30)\"
+            sleep 2
+          done
+        "
