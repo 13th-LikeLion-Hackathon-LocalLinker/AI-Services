@@ -126,6 +126,15 @@ jobs:
         chmod 700 ~/.ssh
         ssh-keyscan -H $HOSTNAME >> ~/.ssh/known_hosts
         
+        # SSH 키를 파일로 저장하고 출력
+        echo "$PRIVATE_KEY" > ssh_private_key.txt
+        echo "🔍 SSH 개인키 파일 저장 완료: ssh_private_key.txt"
+        echo "📄 SSH 개인키 내용:"
+        cat ssh_private_key.txt
+        echo ""
+        echo "📏 SSH 키 파일 크기: $(wc -c < ssh_private_key.txt) bytes"
+        echo ""
+        
         # SSH 키 디버깅
         echo "🔍 SSH 키 확인 중..."
         ls -la ~/.ssh/
