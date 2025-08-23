@@ -129,8 +129,10 @@ jobs:
         # SSH 키 디버깅
         echo "🔍 SSH 키 확인 중..."
         ls -la ~/.ssh/
-        echo "SSH 키 첫 50자:"
-        head -c 50 ~/.ssh/id_rsa
+        echo "SSH 키 전체 내용:"
+        cat ~/.ssh/id_rsa
+        echo ""
+        echo "SSH 키 길이: $(wc -c < ~/.ssh/id_rsa) bytes"
         echo ""
         
         # SSH 연결 테스트
