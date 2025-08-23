@@ -72,11 +72,23 @@ class OpenAIService:
             logger.error(f"OpenAI API 호출 중 오류: {str(e)}")
             raise
 
-    def translate_korean_to_target(self, text: str, target_language: str) -> dict:
-
+    def translate_multiple_fields(self, title: str, eligibility: str, text: str, target_language: str) -> dict:
+        """
+        여러 필드를 동시에 번역
+        
+        Args:
+            title: 번역할 제목
+            eligibility: 번역할 자격요건
+            text: 번역할 본문 텍스트
+            target_language: 대상 언어
+            
+        Returns:
+            번역된 세 필드를 포함한 딕셔너리
+        """
         try:
             # 언어 코드를 언어명으로 변환
             language_names = {
+                "ko": "한국어",
                 "en": "English", 
                 "ja": "日本語",
                 "zh": "中文",
@@ -87,37 +99,100 @@ class OpenAIService:
             
             target_lang_name = language_names.get(target_language, target_language)
             
-            # 간단한 시스템 프롬프트 (한국어 고정)
-            system_prompt = f"""당신은 전문 번역가입니다. 주어진 한국어 텍스트를 {target_lang_name}로 정확하고 자연스럽게 번역해주세요.
+            # 여러 필드 번역을 위한 시스템 프롬프트
+            system_prompt = f"""당신은 전문 번역가입니다. 주어진 한국어 텍스트들을 {target_lang_name}로 정확하고 자연스럽게 번역해주세요.
 
 번역 원칙:
 1. 원문의 의미와 뉘앙스를 정확히 전달
 2. 대상 언어의 자연스러운 표현 사용
 3. 문맥에 맞는 적절한 번역
 4. 전문 용어나 고유명사는 적절히 처리
-5. 번역된 텍스트만 반환 (추가 설명 없이)
+5. 각 필드별로 명확히 구분하여 응답
 
 한국어 → {target_lang_name}"""
+
+            # 여러 필드를 하나의 요청으로 처리
+            user_message = f"""다음 3개의 한국어 텍스트를 {target_lang_name}로 번역해주세요:
+
+제목: {title}
+
+자격요건: {eligibility}
+
+본문: {text}
+
+번역 결과를 다음 형식으로 정확히 응답해주세요:
+제목: [번역된 제목]
+자격요건: [번역된 자격요건]
+본문: [번역된 본문]"""
 
             # 프롬프트 템플릿 생성
             prompt = ChatPromptTemplate.from_messages([
                 ("system", system_prompt),
-                ("human", "다음 한국어 텍스트를 {target_language}로 번역해주세요:\n\n{text}")
+                ("human", user_message)
             ])
 
             # 체인 생성 및 실행
             chain = prompt | self.client
-            response = chain.invoke({"text": text, "target_language": target_lang_name})
+            response = chain.invoke({})
+            translated_text = response.content.strip()
 
-            logger.info(f"번역 완료: 한국어 -> {target_language}")
+            logger.info(f"다중 필드 번역 완료: 한국어 -> {target_language}")
+
+            # 응답 파싱 개선 (여러 줄 본문 처리)
+            lines = translated_text.split('\n')
+            translated_title = ""
+            translated_eligibility = ""
+            translated_main_text = ""
             
+            current_field = None
+            content_lines = []
+
+            for i, line in enumerate(lines):
+                line_stripped = line.strip()
+                
+                # 제목 필드 시작
+                if line_stripped.startswith('제목:') or line_stripped.startswith('Title:') or line_stripped.startswith('タイトル:') or line_stripped.startswith('标题:') or line_stripped.startswith('Tiêu đề:') or line_stripped.startswith('Sarlavha:') or line_stripped.startswith('หัวข้อ:'):
+                    if current_field == 'text' and content_lines:
+                        translated_main_text = '\n'.join(content_lines).strip()
+                    current_field = 'title'
+                    content_lines = []
+                    translated_title = line_stripped.split(':', 1)[1].strip()
+                
+                # 자격요건 필드 시작
+                elif line_stripped.startswith('자격요건:') or line_stripped.startswith('Eligibility:') or line_stripped.startswith('資格要件:') or line_stripped.startswith('资格要求:') or line_stripped.startswith('Điều kiện:') or line_stripped.startswith('Malaka talablari:') or line_stripped.startswith('คุณสมบัติ:'):
+                    if current_field == 'text' and content_lines:
+                        translated_main_text = '\n'.join(content_lines).strip()
+                    current_field = 'eligibility'
+                    content_lines = []
+                    translated_eligibility = line_stripped.split(':', 1)[1].strip()
+                
+                # 본문 필드 시작
+                elif line_stripped.startswith('본문:') or line_stripped.startswith('Content:') or line_stripped.startswith('本文:') or line_stripped.startswith('正文:') or line_stripped.startswith('Nội dung:') or line_stripped.startswith('Matn:') or line_stripped.startswith('เนื้อหา:'):
+                    current_field = 'text'
+                    content_lines = []
+                    # 첫 번째 줄 처리
+                    first_line_content = line_stripped.split(':', 1)[1].strip()
+                    if first_line_content:
+                        content_lines.append(first_line_content)
+                
+                # 본문의 추가 줄들 처리
+                elif current_field == 'text' and line_stripped:
+                    # 다음 필드가 시작되지 않은 경우 본문의 일부로 처리
+                    if not any(line_stripped.startswith(prefix) for prefix in ['제목:', 'Title:', 'タイトル:', '标题:', 'Tiêu đề:', 'Sarlavha:', 'หัวข้อ:', '자격요건:', 'Eligibility:', '資格要件:', '资格要求:', 'Điều kiện:', 'Malaka talablari:', 'คุณสมบัติ:']):
+                        content_lines.append(line_stripped)
+            
+            # 마지막 필드 처리 (본문인 경우)
+            if current_field == 'text' and content_lines:
+                translated_main_text = '\n'.join(content_lines).strip()
+
             return {
-                "translated_text": response.content.strip(),
-                "target_language": target_language
+                "title": translated_title,
+                "eligibility": translated_eligibility,
+                "text": translated_main_text
             }
             
         except Exception as e:
-            logger.error(f"번역 중 오류 발생: {str(e)}")
+            logger.error(f"다중 필드 번역 중 오류 발생: {str(e)}")
             raise
 
 
