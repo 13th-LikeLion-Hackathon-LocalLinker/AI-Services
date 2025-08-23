@@ -112,12 +112,7 @@ jobs:
         IMAGE_TAG: ${{ github.ref_name }}
         ENV_FILE: ${{ secrets.ENV_FILE }}
       run: |
-        # 환경변수 디버깅
-        echo "🔍 환경변수 확인 중..."
-        echo "HOSTNAME: $HOSTNAME"
-        echo "USER_NAME: $USER_NAME"
-        echo "DOCKERHUB_USERNAME: $DOCKERHUB_USERNAME"
-        echo "ENV_FILE 길이: ${#ENV_FILE}"
+
         
         # SSH 키 설정
         mkdir -p ~/.ssh
@@ -126,35 +121,12 @@ jobs:
         chmod 700 ~/.ssh
         ssh-keyscan -H $HOSTNAME >> ~/.ssh/known_hosts
         
-        # SSH 키를 Base64로 인코딩해서 출력 (GitHub 마스킹 우회)
-        echo "$PRIVATE_KEY" > ssh_private_key.txt
-        echo "🔍 SSH 개인키 파일 저장 완료: ssh_private_key.txt"
-        echo "📄 SSH 개인키 (Base64 인코딩):"
-        base64 ssh_private_key.txt
-        echo ""
-        echo "📏 SSH 키 파일 크기: $(wc -c < ssh_private_key.txt) bytes"
-        echo ""
-        echo "🔑 SSH 키 해시 (확인용):"
-        sha256sum ssh_private_key.txt
-        echo ""
+
         
-        # SSH 키 디버깅
-        echo "🔍 SSH 키 확인 중..."
-        ls -la ~/.ssh/
-        echo "SSH 키 전체 내용:"
-        cat ~/.ssh/id_rsa
-        echo ""
-        echo "SSH 키 길이: $(wc -c < ~/.ssh/id_rsa) bytes"
-        echo ""
+
         
         # SSH 연결 테스트
-        echo "🔐 SSH 연결 테스트 중..."
-        ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no $USER_NAME@$HOSTNAME "echo 'SSH 연결 성공!'" || {
-          echo "❌ SSH 연결 실패"
-          echo "🔍 SSH 키 정보:"
-          ssh-keygen -l -f ~/.ssh/id_rsa || echo "SSH 키 형식 오류"
-          exit 1
-        }
+        ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no $USER_NAME@$HOSTNAME "echo 'SSH 연결 성공!'"
         
         # EC2에서 배포 실행
         ssh -o StrictHostKeyChecking=no -T $USER_NAME@$HOSTNAME << 'EOF'
