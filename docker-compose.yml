@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  locallinker-ai:
+    build: .
+    ports:
+      - "8100:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_CHAT_MODEL=${OPENAI_CHAT_MODEL:-gpt-4}
+      - OPENAI_EMBEDDING_MODEL=${OPENAI_EMBEDDING_MODEL:-text-embedding-ada-002}
+      - TOP_K_RESULTS=${TOP_K_RESULTS:-5}
+      - MAX_TOKENS=${MAX_TOKENS:-1000}
+      - TEMPERATURE=${TEMPERATURE:-0.7}
+      - OPENAI_TIMEOUT=${OPENAI_TIMEOUT:-30}
+    volumes:
+      - ./faiss_index:/app/faiss_index
+      - ./guidebook_pdfs:/app/guidebook_pdfs
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
