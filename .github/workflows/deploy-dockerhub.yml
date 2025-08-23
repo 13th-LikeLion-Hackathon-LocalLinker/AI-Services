@@ -81,25 +81,34 @@ jobs:
         ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no $USER_NAME@$HOSTNAME "echo 'SSH 연결 성공!'"
         
         # EC2에서 배포 실행
-        ssh -o StrictHostKeyChecking=no -T $USER_NAME@$HOSTNAME << 'EOF'
+        ssh -o StrictHostKeyChecking=no -T $USER_NAME@$HOSTNAME << EOF
         # 프로젝트 디렉토리 생성
         mkdir -p ~/fastapi-app && cd ~/fastapi-app
+        
+        # 환경변수 파일 생성
+        cat > .env << 'ENVEOF'
+        $ENV_FILE
+        ENVEOF
+        
+        # .env 파일 내용 확인
+        echo "📋 생성된 .env 파일:"
+        head -3 .env
         
         # docker-compose.yml 생성
         cat > docker-compose.yml << 'COMPOSEEOF'
         services:
           locallinker-ai:
-            image: ${DOCKERHUB_USERNAME}/locallinker-ai:latest
+            image: $DOCKERHUB_USERNAME/locallinker-ai:latest
             ports:
               - '8100:8000'
             environment:
-              - OPENAI_API_KEY=${OPENAI_API_KEY}
-              - OPENAI_CHAT_MODEL=${OPENAI_CHAT_MODEL:-gpt-4}
-              - OPENAI_EMBEDDING_MODEL=${OPENAI_EMBEDDING_MODEL:-text-embedding-ada-002}
-              - TOP_K_RESULTS=${TOP_K_RESULTS:-5}
-              - MAX_TOKENS=${MAX_TOKENS:-1000}
-              - TEMPERATURE=${TEMPERATURE:-0.7}
-              - OPENAI_TIMEOUT=${OPENAI_TIMEOUT:-30}
+              - OPENAI_API_KEY=\${OPENAI_API_KEY}
+              - OPENAI_CHAT_MODEL=\${OPENAI_CHAT_MODEL:-gpt-4}
+              - OPENAI_EMBEDDING_MODEL=\${OPENAI_EMBEDDING_MODEL:-text-embedding-ada-002}
+              - TOP_K_RESULTS=\${TOP_K_RESULTS:-5}
+              - MAX_TOKENS=\${MAX_TOKENS:-1000}
+              - TEMPERATURE=\${TEMPERATURE:-0.7}
+              - OPENAI_TIMEOUT=\${OPENAI_TIMEOUT:-30}
             volumes:
               - ./faiss_index:/app/faiss_index
               - ./guidebook_pdfs:/app/guidebook_pdfs
@@ -112,8 +121,6 @@ jobs:
               retries: 3
               start_period: 40s
         COMPOSEEOF
-        
-        echo "$ENV_FILE" > .env
         
         # 최신 이미지 가져오기 및 배포
         echo "🔄 최신 Docker 이미지 가져오는 중..."
@@ -130,16 +137,16 @@ jobs:
         for i in {1..30}; do
           if curl -f http://localhost:8100/api/health > /dev/null 2>&1; then
             echo "✅ 배포 성공! 서비스가 정상적으로 실행 중입니다."
-            echo "🌐 접속 URL: http://$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4):8100"
+            echo "🌐 접속 URL: http://\$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4):8100"
             break
           fi
-          if [ $i -eq 30 ]; then
+          if [ \$i -eq 30 ]; then
             echo "❌ 배포 실패 - 서비스가 시작되지 않았습니다."
             echo "📋 컨테이너 로그:"
             docker-compose logs
             exit 1
           fi
-          echo "⏳ 대기 중... ($i/30)"
+          echo "⏳ 대기 중... (\$i/30)"
           sleep 2
         done
         EOF
