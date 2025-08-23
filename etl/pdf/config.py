@@ -15,7 +15,7 @@ class ETLConfig:
 
     def __init__(self):
         # 프로젝트 루트 경로
-        self.project_root = Path(__file__).parent.parent
+        self.project_root = Path(__file__).parent.parent.parent
 
         # PDF 가이드북 경로
         self.guidebook_dir = self.project_root / "guidebook_pdfs"

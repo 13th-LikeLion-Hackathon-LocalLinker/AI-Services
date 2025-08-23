@@ -49,6 +49,7 @@ class EmbeddingService:
         """기존에 저장된 FAISS DB를 로드합니다."""
         try:
             index_path = self.config.project_root / "faiss_index"
+            logger.info("현재 FAISS 인덱스 로드 시도 중..." + str(index_path))
             if index_path.exists():
                 self.faiss_db = FAISS.load_local(
                     str(index_path),
