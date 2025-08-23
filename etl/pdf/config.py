@@ -20,6 +20,9 @@ class ETLConfig:
         # PDF 가이드북 경로
         self.guidebook_dir = self.project_root / "guidebook_pdfs"
 
+        # faiss 인덱스 경로
+        self.faiss_index_dir = Path(__file__).parent / "faiss_index"
+
         # 청킹 설정
         self.chunk_size = 1000  # 토큰 기준 청크 크기
         self.chunk_overlap = 0  # 청크 간 겹치는 토큰 수

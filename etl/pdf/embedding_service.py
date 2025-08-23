@@ -35,7 +35,7 @@ class EmbeddingService:
             logger.info("임베딩 생성 완료")
 
             # 로컬에 저장
-            save_path = self.config.project_root / "faiss_index"
+            save_path = self.config.faiss_index_dir
             self.faiss_db.save_local(str(save_path))
             logger.info(f"FAISS 인덱스 저장 완료: {save_path}")
 
@@ -48,7 +48,7 @@ class EmbeddingService:
     def load_existing_db(self):
         """기존에 저장된 FAISS DB를 로드합니다."""
         try:
-            index_path = self.config.project_root / "faiss_index"
+            index_path = self.config.faiss_index_dir
             logger.info("현재 FAISS 인덱스 로드 시도 중..." + str(index_path))
             if index_path.exists():
                 self.faiss_db = FAISS.load_local(
