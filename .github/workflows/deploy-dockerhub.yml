@@ -23,6 +23,14 @@ jobs:
       with:
         python-version: '3.11'
     
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
@@ -78,12 +86,14 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
-        platforms: linux/amd64,linux/arm64
+        platforms: linux/amd64
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
+        build-args: |
+          BUILDKIT_INLINE_CACHE=1
 
   deploy:
     runs-on: ubuntu-latest
@@ -108,17 +118,22 @@ jobs:
         TEMPERATURE: ${{ secrets.TEMPERATURE }}
         OPENAI_TIMEOUT: ${{ secrets.OPENAI_TIMEOUT }}
       run: |
-        echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
+        # SSH 키 설정
+        mkdir -p ~/.ssh
+        echo "$PRIVATE_KEY" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H $HOSTNAME >> ~/.ssh/known_hosts
         
-        ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} "
+        # EC2에서 배포 실행
+        ssh $USER_NAME@$HOSTNAME << 'EOF'
           # 프로젝트 디렉토리 생성
-          mkdir -p locallinker-ai && cd locallinker-ai
+          mkdir -p ~/fastapi-app && cd ~/fastapi-app
           
           # docker-compose.yml 생성 (Docker Hub 이미지 사용)
-          cat > docker-compose.yml << 'EOF'
+          cat > docker-compose.yml << 'COMPOSEEOF'
         services:
           locallinker-ai:
-            image: ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest
+            image: ${DOCKERHUB_USERNAME}/locallinker-ai:latest
             ports:
               - '8100:8000'
             environment:
@@ -140,37 +155,61 @@ jobs:
               timeout: 10s
               retries: 3
               start_period: 40s
-        EOF
+        COMPOSEEOF
           
           # 환경변수 파일 생성
-          cat > .env << EOF
-        OPENAI_API_KEY=${OPENAI_API_KEY}
-        OPENAI_CHAT_MODEL=${OPENAI_CHAT_MODEL:-gpt-4}
-        OPENAI_EMBEDDING_MODEL=${OPENAI_EMBEDDING_MODEL:-text-embedding-ada-002}
-        TOP_K_RESULTS=${TOP_K_RESULTS:-5}
-        MAX_TOKENS=${MAX_TOKENS:-1000}
-        TEMPERATURE=${TEMPERATURE:-0.7}
-        OPENAI_TIMEOUT=${OPENAI_TIMEOUT:-30}
-        EOF
+          cat > .env << 'ENVEOF'
+          OPENAI_API_KEY=${OPENAI_API_KEY}
+          OPENAI_CHAT_MODEL=${OPENAI_CHAT_MODEL:-gpt-4}
+          OPENAI_EMBEDDING_MODEL=${OPENAI_EMBEDDING_MODEL:-text-embedding-ada-002}
+          TOP_K_RESULTS=${TOP_K_RESULTS:-5}
+          MAX_TOKENS=${MAX_TOKENS:-1000}
+          TEMPERATURE=${TEMPERATURE:-0.7}
+          OPENAI_TIMEOUT=${OPENAI_TIMEOUT:-30}
+          ENVEOF
           
           # 최신 이미지 가져오기 및 배포
+          echo "🔄 최신 Docker 이미지 가져오는 중..."
           docker-compose pull
+          
+          echo "🛑 기존 컨테이너 중지 중..."
           docker-compose down --remove-orphans || true
+          
+          echo "🚀 새 컨테이너 시작 중..."
           docker-compose up -d
           
           # 헬스체크
-          echo '서비스 상태 확인 중...'
+          echo "🏥 서비스 상태 확인 중..."
           for i in {1..30}; do
             if curl -f http://localhost:8100/api/health > /dev/null 2>&1; then
-              echo '✅ 배포 성공!'
+              echo "✅ 배포 성공! 서비스가 정상적으로 실행 중입니다."
+              echo "🌐 접속 URL: http://$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4):8100"
               break
             fi
-            if [ \$i -eq 30 ]; then
-              echo '❌ 배포 실패'
+            if [ $i -eq 30 ]; then
+              echo "❌ 배포 실패 - 서비스가 시작되지 않았습니다."
+              echo "📋 컨테이너 로그:"
               docker-compose logs
               exit 1
             fi
-            echo \"대기 중... (\$i/30)\"
+            echo "⏳ 대기 중... ($i/30)"
             sleep 2
           done
-        "
+        EOF
+
+  notify:
+    runs-on: ubuntu-latest
+    needs: [test, deploy]
+    if: always()
+    
+    steps:
+    - name: Notify deployment status
+      run: |
+        if [ "${{ needs.deploy.result }}" == "success" ]; then
+          echo "🎉 배포가 성공적으로 완료되었습니다!"
+          echo "📊 빌드 시간: 약 15-20분 (단일 아키텍처 최적화)"
+          echo "🌐 서비스 URL: http://${{ secrets.EC2_HOST }}:8100"
+        else
+          echo "❌ 배포에 실패했습니다."
+          echo "🔍 GitHub Actions 로그를 확인해주세요."
+        fi
