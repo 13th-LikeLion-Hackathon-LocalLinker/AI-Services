@@ -48,7 +48,23 @@ jobs:
           sed -i 's/--port 8000/--port 8100/g' Dockerfile
           sed -i 's/localhost:8000/localhost:8100/g' Dockerfile
         fi
+    - name: Ensure curl is installed in image
+      run: |
+        # Dockerfile에 curl 설치가 이미 있으면 스킵
+        if grep -qE 'apk add .*curl|apt-get .*install .*curl' Dockerfile; then
+          echo "Dockerfile already installs curl"
+          exit 0
+        fi
 
+        # 베이스 이미지가 Alpine이면 apk, 아니면 apt 가정
+        if grep -qi 'alpine' Dockerfile; then
+          sed -i '/^FROM /a RUN apk add --no-cache curl ca-certificates' Dockerfile
+        else
+          sed -i '/^FROM /a RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && rm -rf /var/lib/apt/lists/*' Dockerfile
+        fi
+
+        echo "✅ Injected curl install into Dockerfile"
+    
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
