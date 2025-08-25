@@ -110,21 +110,23 @@ jobs:
         
         # FastAPI 서비스 환경변수를 docker-compose.yml에 업데이트
         # 임시로 새로운 설정으로 덮어쓰기
-        cat > temp-fastapi-service.yml << 'FASTAPIEOF'
+        cat > temp-fastapi-service.yml <<FASTAPIEOF
+        services:
           fastapi-server:
-            image: $DOCKERHUB_USERNAME/locallinker-ai:latest
+            image: \${DOCKERHUB_USERNAME}/locallinker-ai:latest
             container_name: fastapi-backend
             expose:
               - "8100"
+            env_file:
+              - ./fastapi-app/.env          # ← 여기에 OPENAI_API_KEY=... 들어있음
             environment:
-              - ENVIRONMENT=production
-              - OPENAI_API_KEY=\${OPENAI_API_KEY}
-              - OPENAI_CHAT_MODEL=\${OPENAI_CHAT_MODEL:-gpt-4}
-              - OPENAI_EMBEDDING_MODEL=\${OPENAI_EMBEDDING_MODEL:-text-embedding-ada-002}
-              - TOP_K_RESULTS=\${TOP_K_RESULTS:-5}
-              - MAX_TOKENS=\${MAX_TOKENS:-1000}
-              - TEMPERATURE=\${TEMPERATURE:-0.7}
-              - OPENAI_TIMEOUT=\${OPENAI_TIMEOUT:-30}
+              ENVIRONMENT: production
+              OPENAI_CHAT_MODEL: \${OPENAI_CHAT_MODEL:-gpt-4o-mini}
+              OPENAI_EMBEDDING_MODEL: \${OPENAI_EMBEDDING_MODEL:-text-embedding-3-small}
+              TOP_K_RESULTS: \${TOP_K_RESULTS:-5}
+              MAX_TOKENS: \${MAX_TOKENS:-1000}
+              TEMPERATURE: \${TEMPERATURE:-0.7}
+              OPENAI_TIMEOUT: \${OPENAI_TIMEOUT:-30}
             volumes:
               - ./logs/fastapi:/app/logs
               - ./fastapi_data/faiss_index:/app/faiss_index
@@ -133,12 +135,13 @@ jobs:
               - app-network
             restart: unless-stopped
             healthcheck:
-              test: ['CMD', 'curl', '-f', 'http://localhost:8100/api/health']
+              test: ["CMD", "curl", "-f", "http://localhost:8100/api/health"]
               interval: 30s
               timeout: 10s
               retries: 3
               start_period: 40s
         FASTAPIEOF
+
         
         # 데이터 디렉토리 생성
         mkdir -p fastapi_data/{faiss_index,guidebook_pdfs}
