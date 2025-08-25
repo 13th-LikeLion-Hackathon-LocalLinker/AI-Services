@@ -113,7 +113,7 @@ jobs:
         cat > temp-fastapi-service.yml <<FASTAPIEOF
         services:
           fastapi-server:
-            image: \${DOCKERHUB_USERNAME}/locallinker-ai:latest
+            image: ${DOCKERHUB_USERNAME}/locallinker-ai:latest
             container_name: fastapi-backend
             expose:
               - "8100"
