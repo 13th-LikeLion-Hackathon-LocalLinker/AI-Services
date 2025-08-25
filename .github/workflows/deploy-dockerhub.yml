@@ -1,4 +1,4 @@
-name: FastAPI CI/CD with HTTPS Deployment
+name: Build and Deploy via Docker Hub
 
 on:
   push:
@@ -39,32 +39,6 @@ jobs:
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}
           type=raw,value=latest,enable={{is_default_branch}}
-
-    # FastAPI Dockerfile이 8100번 포트를 사용하도록 수정
-    - name: Update Dockerfile for port 8100
-      run: |
-        if [ -f Dockerfile ]; then
-          sed -i 's/EXPOSE 8000/EXPOSE 8100/g' Dockerfile
-          sed -i 's/--port 8000/--port 8100/g' Dockerfile
-          sed -i 's/localhost:8000/localhost:8100/g' Dockerfile
-        fi
-    - name: Ensure curl is installed in image
-      run: |
-        # Dockerfile에 curl 설치가 이미 있으면 스킵
-        if grep -qE 'apk add .*curl|apt-get .*install .*curl' Dockerfile; then
-          echo "Dockerfile already installs curl"
-          exit 0
-        fi
-
-        # 베이스 이미지가 Alpine이면 apk, 아니면 apt 가정
-        if grep -qi 'alpine' Dockerfile; then
-          sed -i '/^FROM /a RUN apk add --no-cache curl ca-certificates' Dockerfile
-        else
-          sed -i '/^FROM /a RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && rm -rf /var/lib/apt/lists/*' Dockerfile
-        fi
-
-        echo "✅ Injected curl install into Dockerfile"
-    
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
@@ -77,7 +51,6 @@ jobs:
         cache-to: type=gha,mode=max
         build-args: |
           BUILDKIT_INLINE_CACHE=1
-
   deploy:
     runs-on: ubuntu-latest
     needs: [ build-and-push ]
@@ -86,7 +59,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Deploy FastAPI to EC2 with HTTPS integration
+    - name: Deploy to EC2 via Docker Hub
       env:
         PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
         HOSTNAME: ${{ secrets.EC2_HOST }}
@@ -94,123 +67,87 @@ jobs:
         DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
         IMAGE_TAG: ${{ github.ref_name }}
         ENV_FILE: ${{ secrets.ENV_FILE }}
-        DOMAIN: ${{ secrets.DOMAIN }}
       run: |
+        # SSH 키 설정
         mkdir -p ~/.ssh
         echo "$PRIVATE_KEY" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
         chmod 700 ~/.ssh
         ssh-keyscan -H $HOSTNAME >> ~/.ssh/known_hosts
         
+        # SSH 연결 테스트
         ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no $USER_NAME@$HOSTNAME "echo 'SSH 연결 성공!'"
         
+        # EC2에서 배포 실행
         ssh -o StrictHostKeyChecking=no -T $USER_NAME@$HOSTNAME << EOF
-        # 배포 디렉토리로 이동 (Spring과 동일한 구조)
-        cd ~/deploy
+        # 프로젝트 디렉토리 생성
+        mkdir -p ~/fastapi-app && cd ~/fastapi-app
         
-        # FastAPI 환경변수 파일 업데이트
-        mkdir -p fastapi-app
-        cat > fastapi-app/.env << 'ENVEOF'
+        # 환경변수 파일 생성
+        cat > .env << 'ENVEOF'
         $ENV_FILE
         ENVEOF
         
-        echo "📋 FastAPI 환경변수 파일 업데이트 완료"
+        # .env 파일 내용 확인
+        echo "📋 생성된 .env 파일:"
+        head -3 .env
         
-        # Docker Compose에서 FastAPI 환경변수 업데이트
-        if [ -f docker-compose.yml ]; then
-          echo "📝 기존 docker-compose.yml 파일 사용"
-        else
-          echo "❌ docker-compose.yml 파일이 없습니다. Spring 배포를 먼저 실행하세요."
-          exit 1
-        fi
-        
-        # FastAPI 서비스 환경변수를 docker-compose.yml에 업데이트
-        # 임시로 새로운 설정으로 덮어쓰기
-        cat > temp-fastapi-service.yml <<FASTAPIEOF
+        # docker-compose.yml 생성
+        cat > docker-compose.yml << 'COMPOSEEOF'
         services:
-          fastapi-server:
-            image: ${DOCKERHUB_USERNAME}/locallinker-ai:latest
-            container_name: fastapi-backend
-            expose:
-              - "8100"
-            env_file:
-              - ./fastapi-app/.env          # ← 여기에 OPENAI_API_KEY=... 들어있음
+          locallinker-ai:
+            image: $DOCKERHUB_USERNAME/locallinker-ai:latest
+            ports:
+              - '8100:8000'
             environment:
-              ENVIRONMENT: production
-              OPENAI_CHAT_MODEL: \${OPENAI_CHAT_MODEL:-gpt-4o-mini}
-              OPENAI_EMBEDDING_MODEL: \${OPENAI_EMBEDDING_MODEL:-text-embedding-3-small}
-              TOP_K_RESULTS: \${TOP_K_RESULTS:-5}
-              MAX_TOKENS: \${MAX_TOKENS:-1000}
-              TEMPERATURE: \${TEMPERATURE:-0.7}
-              OPENAI_TIMEOUT: \${OPENAI_TIMEOUT:-30}
+              - OPENAI_API_KEY=\${OPENAI_API_KEY}
+              - OPENAI_CHAT_MODEL=\${OPENAI_CHAT_MODEL:-gpt-4}
+              - OPENAI_EMBEDDING_MODEL=\${OPENAI_EMBEDDING_MODEL:-text-embedding-ada-002}
+              - TOP_K_RESULTS=\${TOP_K_RESULTS:-5}
+              - MAX_TOKENS=\${MAX_TOKENS:-1000}
+              - TEMPERATURE=\${TEMPERATURE:-0.7}
+              - OPENAI_TIMEOUT=\${OPENAI_TIMEOUT:-30}
             volumes:
-              - ./logs/fastapi:/app/logs
-              - ./fastapi_data/faiss_index:/app/faiss_index
-              - ./fastapi_data/guidebook_pdfs:/app/guidebook_pdfs
-            networks:
-              - app-network
+              - ./faiss_index:/app/faiss_index
+              - ./guidebook_pdfs:/app/guidebook_pdfs
+              - ./logs:/app/logs
             restart: unless-stopped
             healthcheck:
-              test: ["CMD", "curl", "-f", "http://localhost:8100/api/health"]
+              test: ['CMD', 'curl', '-f', 'http://localhost:8000/api/health']
               interval: 30s
               timeout: 10s
               retries: 3
               start_period: 40s
-        FASTAPIEOF
-
+        COMPOSEEOF
         
-        # 데이터 디렉토리 생성
-        mkdir -p fastapi_data/{faiss_index,guidebook_pdfs}
+        # 최신 이미지 가져오기 및 배포
+        echo "🔄 최신 Docker 이미지 가져오는 중..."
+        docker-compose pull
         
-        # 최신 FastAPI 이미지 가져오기
-        echo "🔄 FastAPI 이미지 업데이트 중..."
-        docker-compose pull fastapi-server
+        echo "🛑 기존 컨테이너 중지 중..."
+        docker-compose down --remove-orphans || true
         
-        # FastAPI 서비스만 재시작
-        echo "🚀 FastAPI 서비스 재시작 중..."
-        docker-compose up -d fastapi-server
+        echo "🚀 새 컨테이너 시작 중..."
+        docker-compose up -d
         
-        # 서비스 상태 확인
-        echo "📊 서비스 상태:"
-        docker-compose ps
-        
-        # FastAPI 헬스체크
-        echo "🏥 FastAPI 서비스 헬스체크..."
+        # 헬스체크
+        echo "🏥 서비스 상태 확인 중..."
         for i in {1..30}; do
-          if docker-compose exec -T fastapi-server curl -f http://localhost:8100/api/health > /dev/null 2>&1; then
-            echo "✅ FastAPI 서비스 배포 성공!"
-            echo "🔗 내부 URL: http://fastapi-server:8100"
-            if [ -f /etc/letsencrypt/live/$DOMAIN/fullchain.pem ]; then
-              echo "🌐 외부 HTTPS URL: https://$DOMAIN/fastapi/"
-            else
-              echo "📝 SSL 인증서 발급 후: https://$DOMAIN/fastapi/"
-            fi
+          if curl -f http://localhost:8100/api/health > /dev/null 2>&1; then
+            echo "✅ 배포 성공! 서비스가 정상적으로 실행 중입니다."
+            echo "🌐 접속 URL: http://\$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4):8100"
             break
           fi
           if [ \$i -eq 30 ]; then
-            echo "❌ FastAPI 서비스 헬스체크 실패"
-            echo "📋 FastAPI 컨테이너 로그:"
-            docker-compose logs fastapi-server
+            echo "❌ 배포 실패 - 서비스가 시작되지 않았습니다."
+            echo "📋 컨테이너 로그:"
+            docker-compose logs
             exit 1
           fi
           echo "⏳ 대기 중... (\$i/30)"
           sleep 2
         done
-        
-        # 전체 서비스 상태 최종 확인
-        echo "🎯 전체 서비스 최종 상태:"
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        docker-compose ps
-        
-        # 컨테이너 간 통신 테스트
-        echo "🔗 컨테이너 간 통신 테스트:"
-        if docker-compose exec -T spring-server curl -f http://fastapi-server:8100/api/health > /dev/null 2>&1; then
-          echo "✅ Spring → FastAPI 통신 정상"
-        else
-          echo "⚠️  Spring → FastAPI 통신 확인 필요"
-        fi
         EOF
-
   notify:
     runs-on: ubuntu-latest
     needs: [ deploy ]
@@ -220,12 +157,10 @@ jobs:
     - name: Notify deployment status
       run: |
         if [ "${{ needs.deploy.result }}" == "success" ]; then
-          echo "🎉 FastAPI 서비스 HTTPS 배포가 성공적으로 완료되었습니다!"
-          echo "📊 빌드 시간: 약 10-15분"
-          echo "🔗 내부 통신: http://fastapi-server:8100 (컨테이너 간)"
-          echo "🌐 외부 접근: https://${{ secrets.DOMAIN }}/fastapi/ (SSL 인증서 발급 후)"
-          echo "📝 Spring에서 FastAPI 호출 시 FASTAPI_URL=http://fastapi-server:8100 사용"
+          echo "🎉 배포가 성공적으로 완료되었습니다!"
+          echo "📊 빌드 시간: 약 15-20분 (단일 아키텍처 최적화)"
+          echo "🌐 서비스 URL: http://${{ secrets.EC2_HOST }}:8100"
         else
-          echo "❌ FastAPI 배포에 실패했습니다."
+          echo "❌ 배포에 실패했습니다."
           echo "🔍 GitHub Actions 로그를 확인해주세요."
         fi
