@@ -93,7 +93,7 @@ jobs:
         head -3 .env
         
         # docker-compose.yml 생성
-        cat > docker-compose.yml << 'COMPOSEEOF'
+        cat > docker compose.yml << 'COMPOSEEOF'
         services:
           locallinker-ai:
             image: $DOCKERHUB_USERNAME/locallinker-ai:latest
@@ -122,13 +122,13 @@ jobs:
         
         # 최신 이미지 가져오기 및 배포
         echo "🔄 최신 Docker 이미지 가져오는 중..."
-        docker-compose pull
+        docker compose pull
         
         echo "🛑 기존 컨테이너 중지 중..."
-        docker-compose down --remove-orphans || true
+        docker compose down --remove-orphans || true
         
         echo "🚀 새 컨테이너 시작 중..."
-        docker-compose up -d
+        docker compose up -d
         
         # 헬스체크
         echo "🏥 서비스 상태 확인 중..."
@@ -141,7 +141,7 @@ jobs:
           if [ \$i -eq 30 ]; then
             echo "❌ 배포 실패 - 서비스가 시작되지 않았습니다."
             echo "📋 컨테이너 로그:"
-            docker-compose logs
+            docker compose logs
             exit 1
           fi
           echo "⏳ 대기 중... (\$i/30)"
